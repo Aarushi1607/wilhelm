@@ -4,9 +4,17 @@ A multi-turn enterprise knowledge-base agent with domain routing, grounded RAG a
 
 ---
 
+## 🎥 Demo Video
+
+[![Wilhelm Demo](https://img.youtube.com/vi/u8KGFWQlJhs/maxresdefault.jpg)](https://youtu.be/u8KGFWQlJhs)
+
+**YouTube:** https://youtu.be/u8KGFWQlJhs
+
+---
+
 > **⚠️ Synthetic demo data notice**
 >
-> The HR policy and IT support documents in `data/hr-policies/` and `data/it-support/` are **entirely synthetic**. They were generated for this hackathon and do **not** represent real KOHLER policy, procedures, or guidance of any kind. Do not treat them as authoritative. Both document sets are committed to the repository so the project is fully reproducible by anyone who clones it — no separate data download required.
+> The HR policy and IT support documents in `data/hr-policies/` and `data/it-support/` are **entirely synthetic**. They were generated for this hackathon and do **not** represent real polic, procedures, or guidance of any kind. Do not treat them as authoritative. Both document sets are committed to the repository so the project is fully reproducible by anyone who clones it — no separate data download required.
 
 ---
 
@@ -26,7 +34,7 @@ Key capabilities:
 
 ## Architecture
 
-```
+```text
 User query
     │
     ▼
@@ -241,7 +249,7 @@ Open `http://localhost:5173`.
 
 ## Project structure
 
-```
+```text
 wilhelm/
 ├── data/
 │   ├── hr-policies/        # 15 synthetic HR policy documents (Markdown)
