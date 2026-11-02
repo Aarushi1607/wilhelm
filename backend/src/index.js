@@ -41,6 +41,11 @@ function validateEnv() {
     if (!process.env.PINECONE_INDEX_NAME) missing.push('PINECONE_INDEX_NAME')
   }
 
+  if (vsProvider === 'supabase') {
+    if (!process.env.SUPABASE_URL) missing.push('SUPABASE_URL')
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) missing.push('SUPABASE_SERVICE_ROLE_KEY')
+  }
+
   if (missing.length > 0) {
     console.warn(
       '\n⚠️  Wilhelm — missing environment variables:\n' +

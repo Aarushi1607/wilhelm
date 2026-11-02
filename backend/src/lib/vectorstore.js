@@ -25,7 +25,7 @@
  *   OPENAI_API_KEY / GEMINI_API_KEY / LOCAL_API_KEY
  *
  * ── Vector-store providers ────────────────────────────────────────────────────
- *   VECTOR_STORE_PROVIDER = pinecone | chroma   (default: pinecone)
+ *   VECTOR_STORE_PROVIDER = pinecone | chroma | supabase   (default: pinecone)
  *
  *   Pinecone:
  *     PINECONE_API_KEY, PINECONE_INDEX_NAME
@@ -33,6 +33,10 @@
  *   Chroma (requires a running `chroma run` server):
  *     CHROMA_URL        (default: http://localhost:8000)
  *     CHROMA_COLLECTION (default: wilhelm)
+ *
+ *   Supabase (PostgREST + pgvector):
+ *     SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
+ *     SUPABASE_TABLE (default: documents), SUPABASE_MATCH_FUNCTION (default: match_documents)
  */
 
 import OpenAI from 'openai'
@@ -125,6 +129,35 @@ const EMBEDDING_PROVIDERS = {
 let _pineconeIndex = null
 let _chromaCollection = null
 
+function supabaseConfig() {
+  const base = requireEnv('SUPABASE_URL').replace(/\/$/, '')
+  return {
+    base,
+    key: requireEnv('SUPABASE_SERVICE_ROLE_KEY'),
+    table: env('SUPABASE_TABLE', 'documents'),
+    matchFunction: env('SUPABASE_MATCH_FUNCTION', 'match_documents'),
+  }
+}
+
+async function supabaseRequest(path, options = {}) {
+  const { base, key } = supabaseConfig()
+  const response = await fetch(`${base}/rest/v1/${path}`, {
+    ...options,
+    headers: {
+      apikey: key,
+      Authorization: `Bearer ${key}`,
+      'Content-Type': 'application/json',
+      ...(options.headers ?? {}),
+    },
+  })
+  if (!response.ok) {
+    const detail = await response.text()
+    throw new Error(`Supabase request failed (${response.status}): ${detail}`)
+  }
+  if (response.status === 204) return null
+  return response.json()
+}
+
 async function getPineconeIndex() {
   if (_pineconeIndex) return _pineconeIndex
 
@@ -178,6 +211,21 @@ async function upsertChroma(items) {
       text ? { ...metadata, text } : metadata
     ),
     documents: items.map((i) => i.text ?? ''),
+  })
+}
+
+async function upsertSupabase(items) {
+  const { table } = supabaseConfig()
+  const rows = items.map(({ id, embedding, metadata = {}, text = '' }) => ({
+    id,
+    content: text,
+    metadata,
+    embedding,
+  }))
+  await supabaseRequest(`${encodeURIComponent(table)}?on_conflict=id`, {
+    method: 'POST',
+    headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+    body: JSON.stringify(rows),
   })
 }
 
@@ -239,9 +287,29 @@ async function queryChroma(embedding, topK, filter) {
   }))
 }
 
+async function querySupabase(embedding, topK, filter) {
+  const { matchFunction } = supabaseConfig()
+  const domain = filter?.domain?.$eq ?? null
+  const rows = await supabaseRequest(`rpc/${encodeURIComponent(matchFunction)}`, {
+    method: 'POST',
+    body: JSON.stringify({
+      query_embedding: embedding,
+      match_count: topK,
+      filter_domain: domain,
+    }),
+  })
+  return rows.map(({ id, content, metadata = {}, similarity }) => ({
+    id,
+    score: Number(similarity ?? 0),
+    metadata,
+    text: content,
+  }))
+}
+
 const VECTOR_STORE_PROVIDERS = {
   pinecone: { upsert: upsertPinecone, query: queryPinecone },
   chroma: { upsert: upsertChroma, query: queryChroma },
+  supabase: { upsert: upsertSupabase, query: querySupabase },
 }
 
 function getVectorStore() {

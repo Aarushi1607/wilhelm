@@ -80,6 +80,7 @@ All provider coupling is isolated behind two adapter modules. The rest of the co
 |---|---|
 | `pinecone` (default) | Requires `PINECONE_API_KEY` + `PINECONE_INDEX_NAME` |
 | `chroma` | Requires a running `chroma run` server; defaults to `http://localhost:8000` |
+| `supabase` | Supabase Postgres with pgvector; requires project URL and a backend service role key |
 
 ---
 
@@ -90,7 +91,7 @@ All provider coupling is isolated behind two adapter modules. The rest of the co
 - Node.js 20+
 - An LLM API key **or** a local model server (Ollama, LM Studio, etc.)
 - An embedding API key **or** the same local server for embeddings
-- A Pinecone account **or** a running Chroma instance
+- A Pinecone account, a running Chroma instance, or a Supabase project with pgvector enabled
 
 ### 2. Install dependencies
 
@@ -170,6 +171,25 @@ VECTOR_STORE_PROVIDER=chroma
 CHROMA_URL=http://localhost:8000
 CHROMA_COLLECTION=wilhelm
 ```
+
+#### Option D — OpenAI + Supabase pgvector
+
+The included SQL schema uses `text-embedding-3-small` (1536 dimensions). In the Supabase dashboard, open **SQL Editor**, run `backend/supabase/schema.sql`, and set these values in `backend/.env`:
+
+```env
+EMBEDDING_PROVIDER=openai
+EMBEDDING_MODEL=text-embedding-3-small
+EMBEDDING_DIMENSIONS=1536
+OPENAI_API_KEY=sk-...
+
+VECTOR_STORE_PROVIDER=supabase
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=...
+SUPABASE_TABLE=documents
+SUPABASE_MATCH_FUNCTION=match_documents
+```
+
+Use the project URL and service role key from the Supabase project settings. Keep the service role key in the backend environment only; never expose it in the frontend. After the schema and environment are set, run the ingestion command below to load the local source documents into Supabase.
 
 ### 4. Ingest the knowledge base
 
